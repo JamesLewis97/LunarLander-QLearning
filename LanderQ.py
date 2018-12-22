@@ -130,7 +130,7 @@ def play_many_games(bins,discreteBins, N=100000):
 		reward.append(episode_reward)
         plot_running_avg(reward)
         while True:
-            play_one_game(bins,Q,1,eps)
+            play_one_game(bins,discreteBins,Q,1,eps)
 	return length, reward
 
 def plot_running_avg(totalrewards):
