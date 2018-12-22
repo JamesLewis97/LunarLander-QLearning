@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 env = gym.make('LunarLander-v2')
 env._max_episode_steps=5000
-bucketNum=7
+bucketNum=9
 MAXSTATES = (10**6)
 GAMMA = 0.9
 ALPHA = 0.01
@@ -42,8 +42,16 @@ def create_bins():
         bins[5] = np.linspace(-1.3, 0.5, bucketNum)
         #discreteBins[0] = np.linspace(0,1,2)
         #discreteBins[1] = np.linspace(0,1,2)
+        return bins,discreteBins
 
-	return bins,discreteBins
+
+
+def saveQ(Q):
+    np.save('QArray.npy',Q)
+
+
+
+
 
 def assign_bins(observation, bins,discreteBins):
         state = np.zeros(6)
@@ -72,8 +80,14 @@ def get_all_states_as_string():
         return states
 
 def initialize_Q():
-	Q = {}
-        print('Initializing')
+    
+    Q = {}
+    try:
+        print('Looking for a Q array')
+        Q=np.load('QArray.npy').item()
+        print('Found Q array of size', len(Q))
+    except FileNotFoundError:
+        print('No Array Found, Creating One now')
 	all_states = get_all_states_as_string()
 	for state in all_states:
 		Q[state] = {}
@@ -109,13 +123,13 @@ def play_one_game(bins,discreteBins, Q,render, eps):
                 #print(state_new,'Given observation',observation)
 		#print((state_new,bucketNum))
                 a1, max_q_s1a1 = max_dict(Q[state_new])
-		Q[state][act] += ALPHA*(reward + GAMMA*max_q_s1a1 - Q[state][act])
-		state,act = state_new,a1					
-
+                Q[state][act] += ALPHA*(reward + GAMMA*max_q_s1a1 - Q[state][act])
+                state,act = state_new,a1					
 	return total_reward, cnt
 
-def play_many_games(bins,discreteBins, N=100000):
-	Q = initialize_Q()
+def play_many_games(bins,discreteBins, N=10):
+         
+	#Q = initialize_Q()
         print('Starting to play many games')
 	length = []
 	reward = []
@@ -124,14 +138,16 @@ def play_many_games(bins,discreteBins, N=100000):
 		#eps=0.5/(1+n*10e-3)
 		#eps = 1.0 / (np.sqrt(n+1)*0.5)
                 eps=0.1
-		episode_reward, episode_length = play_one_game(bins,discreteBins, Q,0, eps)
+		episode_reward, episode_length= play_one_game(bins,discreteBins, Q,0, eps)
                 print(n, '%.4f' % eps, episode_reward)
 		length.append(episode_length)
 		reward.append(episode_reward)
-        plot_running_avg(reward)
+        #plot_running_avg(reward)
+        saveQ(Q)
         while True:
             play_one_game(bins,discreteBins,Q,1,eps)
 	return length, reward
+
 
 def plot_running_avg(totalrewards):
 	N = len(totalrewards)
@@ -142,6 +158,7 @@ def plot_running_avg(totalrewards):
 	plt.title("Running Average")
 	plt.show()
 
+Q = initialize_Q()
 if __name__ == '__main__':
 	bins,discreteBins = create_bins()
 	episode_lengths, episode_rewards = play_many_games(bins,discreteBins)
