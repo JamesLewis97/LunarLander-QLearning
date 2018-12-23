@@ -2,8 +2,8 @@
 import gym
 import numpy as np 
 import matplotlib.pyplot as plt 
-
-
+import json
+import csv
 
 
 
@@ -47,9 +47,10 @@ def create_bins():
 
 
 def saveQ(Q):
-    np.save('QArray.npy',Q)
-
-
+    w=csv.writer(open("array.csv","w"))
+    for key, val in Q.items():
+        w.writerow([key,val])
+    print("Saved")
 
 
 
@@ -82,19 +83,39 @@ def get_all_states_as_string():
 def initialize_Q():
     
     Q = {}
-    try:
-        print('Looking for a Q array')
-        Q=np.load('QArray.npy').item()
-        print('Found Q array of size', len(Q))
-    except FileNotFoundError:
+    
+    
+    
+    print('Looking for a Q array')
+    
+    try: 
+        reader= csv.reader(open('array.csv'))
+        print('Found Q array in file')
+        for row in reader:
+            key=row[0].zfill(6)
+        
+            Q[key]={}
+            #print(row[1:])
+            temp=''.join(row[1:])
+            temp.replace('{','').replace('}','')
+            for i in range(4):
+                valuePair=temp.split(",")[i].replace('{','').replace('}','').replace(' ','')
+                action=int(valuePair.split(':')[0])
+                qValue=float(valuePair.split(':')[1])
+                Q[key][action]=qValue
+
+        print('Array Loaded, moving to training')
+        return Q
+    except:
         print('No Array Found, Creating One now')
 	all_states = get_all_states_as_string()
 	for state in all_states:
-		Q[state] = {}
-		for action in range(env.action_space.n):
+                Q[state] = {}
+		
+                for action in range(env.action_space.n):
 			Q[state][action] = 0
         print('Initializing done')
-	return Q
+        return Q
 
 def play_one_game(bins,discreteBins, Q,render, eps):
         observation = env.reset()
@@ -112,7 +133,7 @@ def play_one_game(bins,discreteBins, Q,render, eps):
 		if np.random.uniform() < eps:
 			act = env.action_space.sample() # epsilon greedy
 		else:			
-			act = max_dict(Q[state])[0]
+                    act = max_dict(Q[state])[0]
 		
 		observation, reward, done, _ = env.step(act)
                  
@@ -137,13 +158,14 @@ def play_many_games(bins,discreteBins, N=10):
 
 		#eps=0.5/(1+n*10e-3)
 		#eps = 1.0 / (np.sqrt(n+1)*0.5)
-                eps=0.1
+                eps=0.01
 		episode_reward, episode_length= play_one_game(bins,discreteBins, Q,0, eps)
                 print(n, '%.4f' % eps, episode_reward)
 		length.append(episode_length)
 		reward.append(episode_reward)
-        #plot_running_avg(reward)
         saveQ(Q)
+        
+        plot_running_avg(reward)
         while True:
             play_one_game(bins,discreteBins,Q,1,eps)
 	return length, reward
