@@ -9,7 +9,7 @@ import csv
 
 env = gym.make('LunarLander-v2')
 env._max_episode_steps=5000
-bucketNum=9
+bucketNum=7
 MAXSTATES = (10**6)
 GAMMA = 0.9
 ALPHA = 0.01
@@ -130,14 +130,17 @@ def play_one_game(bins,discreteBins, Q,render, eps):
 
                 cnt += 1
 		# np.random.randn() seems to yield a random action 50% of the time ?
-		if np.random.uniform() < eps:
-			act = env.action_space.sample() # epsilon greedy
-		else:			
+                if np.random.uniform() < eps:
+                    if cnt>200:
+                        act = env.action_space.sample() # epsilon greedy
+		    else:
+                        act= max_dict(Q[state])[0]
+                else:			
                     act = max_dict(Q[state])[0]
 		
 		observation, reward, done, _ = env.step(act)
-                 
-		total_reward += reward
+		
+                total_reward += reward
                 state_new=assign_bins(observation,bins,discreteBins)
                 state_new=get_state_as_string(state_new)
 		#state_new = get_state_as_string(assign_bins(observation, bins,discreteBins))
@@ -145,10 +148,14 @@ def play_one_game(bins,discreteBins, Q,render, eps):
 		#print((state_new,bucketNum))
                 a1, max_q_s1a1 = max_dict(Q[state_new])
                 Q[state][act] += ALPHA*(reward + GAMMA*max_q_s1a1 - Q[state][act])
-                state,act = state_new,a1					
+                state,act = state_new,a1
+
+        
+        if render==1:
+            print(total_reward,cnt)
 	return total_reward, cnt
 
-def play_many_games(bins,discreteBins, N=10):
+def play_many_games(bins,discreteBins, N=35000):
          
 	#Q = initialize_Q()
         print('Starting to play many games')
@@ -158,9 +165,9 @@ def play_many_games(bins,discreteBins, N=10):
 
 		#eps=0.5/(1+n*10e-3)
 		#eps = 1.0 / (np.sqrt(n+1)*0.5)
-                eps=0.01
+                eps=0.1
 		episode_reward, episode_length= play_one_game(bins,discreteBins, Q,0, eps)
-                print(n, '%.4f' % eps, episode_reward)
+                print(n, '%.4f' % eps,episode_length, episode_reward)
 		length.append(episode_length)
 		reward.append(episode_reward)
         saveQ(Q)
